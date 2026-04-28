@@ -180,6 +180,7 @@ static void focusstack(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
+static pid_t getstatusbarpid(void);
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabbuttons(Client *c, int focused);
 static void grabkeys(void);
@@ -216,6 +217,7 @@ static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
+static void sigstatusbar(const Arg *arg);
 static void spawn(const Arg *arg);
 static void swapfocus();
 static void tag(const Arg *arg);
@@ -253,6 +255,9 @@ static void viewprevtag(const Arg *arg);
 static Client *prevclient = NULL;
 static const char broken[] = "broken";
 static char stext[256];
+static int statusw;
+static int statussig;
+static pid_t statuspid = -1;
 static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
 static int bh;               /* bar height */
@@ -504,6 +509,7 @@ buttonpress(XEvent *e)
 	Client *c;
 	Monitor *m;
 	XButtonPressedEvent *ev = &e->xbutton;
+	char *text, *s, ch;
 
 	click = ClkRootWin;
 	/* focus monitor if necessary */
@@ -522,9 +528,27 @@ buttonpress(XEvent *e)
 			arg.ui = 1 << i;
 		} else if (ev->x < x + TEXTW(selmon->ltsymbol))
 			click = ClkLtSymbol;
-		else if (ev->x > selmon->ww - (int)TEXTW(stext))
+		else if (ev->x > selmon->ww - statusw) {
+			x = selmon->ww - statusw;
 			click = ClkStatusText;
-		else
+			statussig = 0;
+			for (text = s = stext; *s && x <= ev->x; s++) {
+				if ((unsigned char)(*s) < ' ') {
+					ch = *s;
+					*s = '\0';
+					x += TEXTW(text) - lrpad;
+					*s = ch;
+					text = s + 1;
+					if (x >= ev->x)
+						break;
+					/* End clickable section on a matching signal raw byte */
+					if (statussig == ch)
+						statussig = 0;
+					else
+						statussig = ch;
+				}
+			}
+		} else
 			click = ClkWinTitle;
 	} else if ((c = wintoclient(ev->window))) {
 		focus(c);
@@ -791,72 +815,96 @@ dirtomon(int dir)
 	return m;
 }
 
+/* Helper to draw status text segments with click support */
+int
+draw_status_segment(char *text, int x, int max_w)
+{
+    char *s, ch;
+    int tw;
+    int start_x = x;
+
+    for (s = text; *s; s++) {
+        if ((unsigned char)(*s) < ' ') {
+            ch = *s;
+            *s = '\0';
+            tw = TEXTW(text) - lrpad;
+            drw_text(drw, x, 0, tw, bh, 0, text, 0);
+            x += tw;
+            *s = ch;
+            text = s + 1;
+        }
+    }
+    tw = TEXTW(text) - lrpad + 2;
+    drw_text(drw, x, 0, tw, bh, 0, text, 0);
+    return x + tw - start_x; // Returns total width drawn
+}
+
 void
 drawbar(Monitor *m)
 {
-	int x, w, tw = 0;
-	int boxs = drw->fonts->h / 9;
-	int boxw = drw->fonts->h / 6 + 2;
-	unsigned int i, occ = 0, urg = 0;
-	Client *c;
+    int x, w, tw = 0;
+    int boxs = drw->fonts->h / 9;
+    int boxw = drw->fonts->h / 6 + 2;
+    unsigned int i, occ = 0, urg = 0;
+    Client *c;
 
-	if (!m->showbar)
-		return;
+    if (!m->showbar)
+        return;
 
-       char *mstext;
-       char *rstext;
-       int msx;
-
-	for (c = m->clients; c; c = c->next) {
-		occ |= c->tags;
-		if (c->isurgent)
-			urg |= c->tags;
-	}
-	x = 0;
-	for (i = 0; i < LENGTH(tags); i++) {
-		w = TEXTW(tags[i]);
-		drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
-		drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
-		if (occ & 1 << i)
-			drw_rect(drw, x + boxs, boxs, boxw, boxw,
-				m == selmon && selmon->sel && selmon->sel->tags & 1 << i,
-				urg & 1 << i);
-		x += w;
-	}
-	w = TEXTW(m->ltsymbol);
-	drw_setscheme(drw, scheme[SchemeNorm]);
-	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
-
-	drw_setscheme(drw, scheme[SchemeNorm]);
-	drw_rect(drw, x, 0, m->ww - x, bh, 1, 1);
-
-
-if (m == selmon) {
-    drw_setscheme(drw, scheme[SchemeNorm]);
-    
-    if (splitstatus) {
-        char *orig = strdup(stext);
-        char *ptr = orig;
-        char *center = strsep(&ptr, splitdelim);
-
-        /* 1. Draw centered text */
-        int cx = (m->ww - TEXTW(center) + lrpad) / 2;
-        drw_text(drw, cx, 0, TEXTW(center) - lrpad, bh, 0, center, 0);
-
-        /* 2. Draw right-aligned text (using ptr, which is the remainder) */
-        if (ptr != NULL) {
-            int tw = TEXTW(ptr) - lrpad + 2;
-            drw_text(drw, m->ww - tw, 0, tw, bh, 0, ptr, 0);
-        }
-        free(orig);
-    } else {
-        /* Standard behavior */
-        int tw = TEXTW(stext) - lrpad + 2;
-        drw_text(drw, m->ww - tw, 0, tw, bh, 0, stext, 0);
+    for (c = m->clients; c; c = c->next) {
+        occ |= c->tags;
+        if (c->isurgent)
+            urg |= c->tags;
     }
+    x = 0;
+    for (i = 0; i < LENGTH(tags); i++) {
+        w = TEXTW(tags[i]);
+        drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
+        drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
+        if (occ & 1 << i)
+            drw_rect(drw, x + boxs, boxs, boxw, boxw,
+                     m == selmon && selmon->sel && selmon->sel->tags & 1 << i,
+                     urg & 1 << i);
+        x += w;
+    }
+    w = TEXTW(m->ltsymbol);
+    drw_setscheme(drw, scheme[SchemeNorm]);
+    x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
+
+    /* Draw the rest of the bar background */
+    drw_setscheme(drw, scheme[SchemeNorm]);
+    drw_rect(drw, x, 0, m->ww - x, bh, 1, 1);
+
+    if (m == selmon) {
+        drw_setscheme(drw, scheme[SchemeNorm]);
+
+        if (splitstatus) {
+            char *orig = strdup(stext);
+            char *ptr = orig;
+            char *center = strsep(&ptr, splitdelim);
+
+            /* 1. Draw centered text */
+            if (center) {
+                int center_w = TEXTW(center) - lrpad;
+                int cx = (m->ww - center_w) / 2;
+                draw_status_segment(center, cx, center_w);
+            }
+
+            /* 2. Draw right-aligned text (using ptr, which is the remainder) */
+            if (ptr != NULL) {
+                int right_w = TEXTW(ptr) - lrpad + 2;
+                draw_status_segment(ptr, m->ww - right_w, right_w);
+            }
+            free(orig);
+        } else {
+            /* Standard behavior: Draw entire status text right-aligned */
+            draw_status_segment(stext, m->ww - TEXTW(stext) + lrpad - 2, 0);
+        }
+    }
+    drw_map(drw, m->barwin, 0, 0, m->ww, bh);
 }
-	drw_map(drw, m->barwin, 0, 0, m->ww, bh);
-}
+
+
 
 void
 drawbars(void)
@@ -985,6 +1033,30 @@ getatomprop(Client *c, Atom prop)
 		XFree(p);
 	}
 	return atom;
+}
+
+pid_t
+getstatusbarpid(void)
+{
+	char buf[32], *str = buf, *c;
+	FILE *fp;
+
+	if (statuspid > 0) {
+		snprintf(buf, sizeof(buf), "/proc/%u/cmdline", statuspid);
+		if ((fp = fopen(buf, "r"))) {
+			fgets(buf, sizeof(buf), fp);
+			while ((c = strchr(str, '/')))
+				str = c + 1;
+			fclose(fp);
+			if (!strcmp(str, STATUSBAR))
+				return statuspid;
+		}
+	}
+	if (!(fp = popen("pidof -s "STATUSBAR, "r")))
+		return -1;
+	fgets(buf, sizeof(buf), fp);
+	pclose(fp);
+	return strtol(buf, NULL, 10);
 }
 
 int
@@ -1841,6 +1913,20 @@ showhide(Client *c)
 }
 
 void
+sigstatusbar(const Arg *arg)
+{
+	union sigval sv;
+
+	if (!statussig)
+		return;
+	sv.sival_int = arg->i;
+	if ((statuspid = getstatusbarpid()) <= 0)
+		return;
+
+	sigqueue(statuspid, SIGRTMIN+statussig, sv);
+}
+
+void
 spawn(const Arg *arg)
 {
 	struct sigaction sa;
@@ -2237,8 +2323,25 @@ updatesizehints(Client *c)
 void
 updatestatus(void)
 {
-	if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
+	if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext))) {
 		strcpy(stext, "dwm-"VERSION);
+		statusw = TEXTW(stext) - lrpad + 2;
+	} else {
+		char *text, *s, ch;
+
+		statusw  = 0;
+		for (text = s = stext; *s; s++) {
+			if ((unsigned char)(*s) < ' ') {
+				ch = *s;
+				*s = '\0';
+				statusw += TEXTW(text) - lrpad;
+				*s = ch;
+				text = s + 1;
+			}
+		}
+		statusw += TEXTW(text) - lrpad + 2;
+
+	}
 	drawbar(selmon);
 }
 
