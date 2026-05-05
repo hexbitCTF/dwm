@@ -35,7 +35,7 @@ static const Rule rules[] = {
     { NULL,       NULL,       "scratchpad", 0,          1,           -1 },
     { "Code",     NULL,       NULL,       1 << 2,       0,           0},
     
-    { "whatsapp", NULL,       NULL,       1 << 0,       0,           0},
+    { "whatsapp", NULL,       NULL,       1 << 1,       0,           0},
     { "anytype",  NULL,       NULL,       1 << 3,       0,           0},
 };
 
@@ -127,7 +127,11 @@ static const Button buttons[] = {
         { ClkStatusText,        0,              Button3,        sigstatusbar,   {.i = 3} },
         { ClkStatusText,        0,              Button4,        sigstatusbar,   {.i = 4} },
         { ClkStatusText,        0,              Button5,        sigstatusbar,   {.i = 5} },
-        { ClkStatusText,        0,              6,              sigstatusbar,   {.i = 6} },
+        /* Shift + Clicks (Allows the script to see the modifier) */
+    	{ ClkStatusText,        ShiftMask,      Button1,        sigstatusbar,   {.i = 1} },
+    	{ ClkStatusText,        ShiftMask,      Button2,        sigstatusbar,   {.i = 2} },
+    	{ ClkStatusText,        ShiftMask,      Button3,        sigstatusbar,   {.i = 3} },
+	{ ClkStatusText,        0,              6,              sigstatusbar,   {.i = 6} },
         { ClkStatusText,        0,              7,              sigstatusbar,   {.i = 7} },
         { ClkStatusText,        0,              8,              sigstatusbar,   {.i = 8} },
         { ClkStatusText,        0,              9,              sigstatusbar,   {.i = 9} },

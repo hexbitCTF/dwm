@@ -501,6 +501,7 @@ attachstack(Client *c)
 	c->mon->stack = c;
 }
 
+
 void
 buttonpress(XEvent *e)
 {
@@ -541,13 +542,20 @@ buttonpress(XEvent *e)
 					text = s + 1;
 					if (x >= ev->x)
 						break;
-					/* End clickable section on a matching signal raw byte */
+					
+					/* If we hit a signal byte, toggle the statussig */
 					if (statussig == ch)
 						statussig = 0;
 					else
 						statussig = ch;
 				}
 			}
+			/* CRITICAL FIX: If the loop finished or broke because x >= ev.x, 
+			 * we check if the mouse is actually over the text of the block.
+			 * If the mouse is in the trailing padding/delimiter area, kill the signal. */
+			if (ev->x > x)
+				statussig = 0;
+				
 		} else
 			click = ClkWinTitle;
 	} else if ((c = wintoclient(ev->window))) {
@@ -561,6 +569,8 @@ buttonpress(XEvent *e)
 		&& CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
 			buttons[i].func(click == ClkTagBar && buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
 }
+
+
 
 void
 checkotherwm(void)
@@ -897,8 +907,10 @@ drawbar(Monitor *m)
             }
             free(orig);
         } else {
-            /* Standard behavior: Draw entire status text right-aligned */
-            draw_status_segment(stext, m->ww - TEXTW(stext) + lrpad - 2, 0);
+/* Standard behavior: Draw entire status text flush right */
+int tw = TEXTW(stext) - lrpad; 
+draw_status_segment(stext, m->ww - tw, tw);
+
         }
     }
     drw_map(drw, m->barwin, 0, 0, m->ww, bh);
