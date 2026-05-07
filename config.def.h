@@ -1,4 +1,6 @@
 /* See LICENSE file for copyright and license details. */
+
+
 	
 /* appearance */
 static const unsigned int borderpx  = 2;        /* border pixel of windows */
@@ -15,16 +17,19 @@ static        int smartgaps          = 1;        /* 1 means no outer gap when th
 static const char *fonts[] = { "JetBrainsMono Nerd Font:size=16:autohint=true:antialias=true" };
 // {"FiraCode Nerd Font:pixelsize=18:antialias=true:autohint=true"};
 static const char dmenufont[]       = "monospace:size=12";
-static const char col_gray1[]       = "#222222";
-static const char col_gray2[]       = "#444444";
-static const char col_gray3[]       = "#bbbbbb";
-static const char col_gray4[]       = "#eeeeee";
-static const char col_cyan[]        = "#005577";
+static const char col_bg[]          = "#24283b"; // Bar background / Normal bg
+static const char col_dark[]        = "#1f2335"; // Inactive window border
+static const char col_fg[]          = "#c0caf5"; // Foreground text
+static const char col_accent[]      = "#7aa2f7"; // Active blue accent
+static const char col_sel_bg[]      = "#364a82"; // Selection background
+
 static const char *colors[][3]      = {
-        /*               fg         bg         border   */
-        [SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
-        [SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
+    /*               fg         bg         border   */
+    [SchemeNorm] = { col_fg,    col_bg,    col_dark },   // Normal window
+    [SchemeSel]  = { col_fg,    col_accent, col_accent }, // Active window/tag
 };
+
+
 
 /* tagging */
 static const char *tags[] = { "", "", "📖", "📝"};
@@ -69,8 +74,12 @@ static const Layout layouts[] = {
 #define STATUSBAR "dwmblocks"
 
 /* commands */
+/* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
-static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
+
+// REPLACE THIS LINE:
+static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_bg, "-nf", col_fg, "-sb", col_accent, "-sf", col_bg, NULL };
+
 static const char *termcmd[]  = { "st", NULL };
 static const char scratchpadname[] = "scratchpad";
 static const char *scratchpadcmd[] = { "st", "-t", scratchpadname, "-g", "120x34", NULL };
@@ -81,8 +90,8 @@ static const Key keys[] = {
         { MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
         { MODKEY,                       XK_grave,  togglescratch,  {.v = scratchpadcmd } },
         { MODKEY,                       XK_b,      togglebar,      {0} },
-        { MODKEY,                       XK_Right,  focusstack,     {.i = +1 } },
-        { MODKEY,                       XK_Left,   focusstack,     {.i = -1 } },
+        { MODKEY,                       XK_l,  focusstack,     {.i = +1 } },
+        { MODKEY,                       XK_h,   focusstack,     {.i = -1 } },
         { MODKEY|ShiftMask,             XK_Up,     incnmaster,     {.i = +1 } },
         { MODKEY|ShiftMask,             XK_Down,   incnmaster,     {.i = -1 } },
         { MODKEY,                       XK_d,      setmfact,       {.f = -0.05} },
