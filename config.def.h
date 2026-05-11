@@ -27,8 +27,7 @@ static const char *colors[][3]      = {
     /*               fg         bg         border   */
     [SchemeNorm] = { col_fg,    col_bg,    col_dark },   // Normal window
     [SchemeSel]  = { col_fg,    col_accent, col_accent }, // Active window/tag
-};
-
+};  
 
 
 /* tagging */
@@ -90,8 +89,8 @@ static const Key keys[] = {
         { MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
         { MODKEY,                       XK_grave,  togglescratch,  {.v = scratchpadcmd } },
         { MODKEY,                       XK_b,      togglebar,      {0} },
-        { MODKEY,                       XK_l,  focusstack,     {.i = +1 } },
-        { MODKEY,                       XK_h,   focusstack,     {.i = -1 } },
+        { MODKEY,                       XK_l,  	   focusstack,     {.i = +1 } },
+        { MODKEY,                       XK_h,      focusstack,     {.i = -1 } },
         { MODKEY|ShiftMask,             XK_Up,     incnmaster,     {.i = +1 } },
         { MODKEY|ShiftMask,             XK_Down,   incnmaster,     {.i = -1 } },
         { MODKEY,                       XK_d,      setmfact,       {.f = -0.05} },
