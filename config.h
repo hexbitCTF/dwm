@@ -1,6 +1,4 @@
 /* See LICENSE file for copyright and license details. */
-
-
 	
 /* appearance */
 static const unsigned int borderpx  = 2;        /* border pixel of windows */
@@ -14,7 +12,12 @@ static const unsigned int gappiv    = 7;       /* vert inner gap between windows
 static const unsigned int gappoh    = 5;       /* horiz outer gap between windows and screen edge */
 static const unsigned int gappov    = 5;       /* vert outer gap between windows and screen edge */
 static        int smartgaps          = 1;        /* 1 means no outer gap when there is only one window */
-static const char *fonts[] = { "JetBrainsMono Nerd Font:size=16:autohint=true:antialias=true" };
+static const char *fonts[] = { 
+	"JetBrainsMono Nerd Font:size=16:autohint=true:antialias=true",
+	"Noto Color Emoji:pixelsize=18:antialias=true:autohint=true"
+ };
+
+
 // {"FiraCode Nerd Font:pixelsize=18:antialias=true:autohint=true"};
 static const char dmenufont[]       = "monospace:size=12";
 static const char col_bg[]          = "#24283b"; // Bar background / Normal bg
@@ -27,12 +30,11 @@ static const char *colors[][3]      = {
     /*               fg         bg         border   */
     [SchemeNorm] = { col_fg,    col_bg,    col_dark },   // Normal window
     [SchemeSel]  = { col_fg,    col_accent, col_accent }, // Active window/tag
-};
-
+};  
 
 
 /* tagging */
-static const char *tags[] = { "", "", "📖", "📝"};
+static const char *tags[] = { "🏠", "🔒", "📖", "📝" };
 
 static const Rule rules[] = {
     { "Gimp",     NULL,       NULL,       0,            0,           1},
@@ -90,8 +92,8 @@ static const Key keys[] = {
         { MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
         { MODKEY,                       XK_grave,  togglescratch,  {.v = scratchpadcmd } },
         { MODKEY,                       XK_b,      togglebar,      {0} },
-        { MODKEY,                       XK_l,  focusstack,     {.i = +1 } },
-        { MODKEY,                       XK_h,   focusstack,     {.i = -1 } },
+        { MODKEY,                       XK_l,  	   focusstack,     {.i = +1 } },
+        { MODKEY,                       XK_h,      focusstack,     {.i = -1 } },
         { MODKEY|ShiftMask,             XK_Up,     incnmaster,     {.i = +1 } },
         { MODKEY|ShiftMask,             XK_Down,   incnmaster,     {.i = -1 } },
         { MODKEY,                       XK_d,      setmfact,       {.f = -0.05} },
